@@ -38,20 +38,28 @@ const doc = new GoogleSpreadsheet(sheetId, serviceAccountAuth);
 const calendar = google.calendar({ version: 'v3', auth: serviceAccountAuth });
 const calendarId = process.env.CALENDAR_ID;
 
-const buatEventGantiOli = async (tanggalPerkiraan, kmTarget) => {
+const buatEventGantiOli = async (tanggalMulaiStr, kmTarget) => {
   try {
+    // Hitung tanggal selesai (H+1) untuk syarat All-Day Event Google Calendar
+    const startDate = new Date(tanggalMulaiStr);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+    
+    // Format kembali ke YYYY-MM-DD
+    const tanggalSelesaiStr = endDate.toISOString().split('T')[0];
+
     const event = {
       summary: 'Waktunya Ganti Oli Motor! 🏍️',
       description: `Target KM ganti oli: ${kmTarget}. Segera cek kondisi motor.`,
-      start: { date: tanggalPerkiraan }, 
-      end: { date: tanggalPerkiraan }, 
+      start: { date: tanggalMulaiStr }, 
+      end: { date: tanggalSelesaiStr }, 
     };
 
     await calendar.events.insert({
       calendarId: calendarId,
       resource: event,
     });
-    console.log(`[Calendar] Event ganti oli berhasil dibuat untuk tanggal ${tanggalPerkiraan}`);
+    console.log(`[Calendar] Event ganti oli berhasil dibuat untuk tanggal ${tanggalMulaiStr}`);
   } catch (error) {
     console.error('[Calendar] Gagal membuat event:', error);
   }
