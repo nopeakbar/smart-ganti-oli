@@ -102,17 +102,25 @@ const updateDataMotor = async (chatId, dataAI) => {
   try {
     bot.sendMessage(chatId, '⏳ Mengamankan data ke sistem...');
     await doc.loadInfo();
-    const sheet = doc.sheetsByIndex[0];
-    const rows = await sheet.getRows();
     
-    const rowStatus = rows[0]; 
+    // Ambil Sheet 1 (Status) dan Sheet 2 (History)
+    const sheetStatus = doc.sheetsByIndex[0];
+    const sheetHistory = doc.sheetsByIndex[1]; 
+    
+    const rowsStatus = await sheetStatus.getRows();
+    const rowStatus = rowsStatus[0]; 
+    
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const tanggalHariIni = timestamp.split(',')[0]; 
     
     let pesanBalasan = '';
+    let tipeLaporan = '';
 
     if (dataAI.intent === 'ganti_oli') {
       const targetBaru = dataAI.km_angka + 2000;
+      tipeLaporan = 'Ganti Oli';
+      
+      // Update Sheet 1
       rowStatus.assign({
         'Tanggal Update': tanggalHariIni,
         'KM Sekarang': dataAI.km_angka,
@@ -133,7 +141,9 @@ const updateDataMotor = async (chatId, dataAI) => {
     else {
       const targetKM = parseInt(rowStatus.get('Target KM Ganti'));
       const sisaKM = targetKM - dataAI.km_angka;
+      tipeLaporan = 'Update Harian';
       
+      // Update Sheet 1
       rowStatus.assign({
         'Tanggal Update': tanggalHariIni,
         'KM Sekarang': dataAI.km_angka
@@ -142,6 +152,15 @@ const updateDataMotor = async (chatId, dataAI) => {
       pesanBalasan = `✅ **KM Berhasil Diupdate!**\n\n📅 Tanggal: ${tanggalHariIni}\n🏍️ KM Saat Ini: ${dataAI.km_angka}\n🎯 Target Servis: ${targetKM}\n\n⚠️ Sisa jarak aman: **${sisaKM} KM** lagi.`;
     }
 
+    // --- FITUR BARU: Tambah Log History ke Sheet 2 (Baris ke bawah) ---
+    await sheetHistory.addRow([
+      tanggalHariIni,
+      dataAI.km_angka,
+      tipeLaporan,
+      dataAI.catatan || '-'
+    ]);
+
+    // Save perubahan di Sheet 1
     await rowStatus.save();
     bot.sendMessage(chatId, pesanBalasan, { parse_mode: "Markdown" });
 
