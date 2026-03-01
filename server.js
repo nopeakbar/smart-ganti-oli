@@ -150,6 +150,13 @@ const updateDataMotor = async (chatId, dataAI) => {
       });
       
       pesanBalasan = `✅ **KM Berhasil Diupdate!**\n\n📅 Tanggal: ${tanggalHariIni}\n🏍️ KM Saat Ini: ${dataAI.km_angka}\n🎯 Target Servis: ${targetKM}\n\n⚠️ Sisa jarak aman: **${sisaKM} KM** lagi.`;
+
+      // --- LOGIKA URGENT JIKA SISA < 50 KM ---
+      if (sisaKM <= 50 && sisaKM > 0) {
+        pesanBalasan += `\n\n🚨 **URGENT BOS!!!** 🚨\nSisa jarak cuma ${sisaKM} KM! Mesin udah teriak minta oli baru. Besok WAJIB mampir bengkel!`;
+      } else if (sisaKM <= 0) {
+        pesanBalasan += `\n\n💀 **KABAR BURUK!!!** 💀\nUdah LEWAT target ganti oli! KM kamu kelebihan ${Math.abs(sisaKM)} KM. Jangan dipaksa jalan jauh, bahaya turun mesin!`;
+      }
     }
 
     // --- FITUR BARU: Tambah Log History ke Sheet 2 (Baris ke bawah) ---
@@ -199,8 +206,8 @@ bot.on('message', async (msg) => {
 // 5. CRON JOBS (PENJADWALAN OTOMATIS)
 // ==========================================
 
-// Cron Harian: Tagih Update KM tiap jam 20:00 WIB
-cron.schedule('0 20 * * *', async () => {
+// Fungsi pengecekan Harian (biar bisa dipanggil berkali-kali)
+const tagihUpdateKM = async () => {
   if (!adminChatId) return; 
 
   try {
@@ -213,12 +220,18 @@ cron.schedule('0 20 * * *', async () => {
     const tanggalUpdateTerakhir = rowStatus.get('Tanggal Update');
 
     if (tanggalUpdateTerakhir !== tanggalHariIni) {
-      bot.sendMessage(adminChatId, `🔔 **Halo Bos Akbar!**\n\nHari ini belum lapor posisi KM nih. Sekarang motormu di KM berapa? Balas chat ini ya!`);
+      bot.sendMessage(adminChatId, `🔔 **Ting Tong!**\n\nBos, hari ini belum lapor posisi KM nih. Udah nambah berapa KM hari ini? Balas chat ini ya biar nggak ditagih lagi!`);
     }
   } catch (error) {
     console.error("[Cron Harian] Error:", error);
   }
-}, { timezone: "Asia/Jakarta" });
+};
+
+// Jadwal spam nagih KM: Jam 20:00, 21:00, 22:00, 23:00
+cron.schedule('0 20,21,22,23 * * *', tagihUpdateKM, { timezone: "Asia/Jakarta" });
+
+// Jadwal spam terakhir sebelum tidur: Jam 23:30
+cron.schedule('30 23 * * *', tagihUpdateKM, { timezone: "Asia/Jakarta" });
 
 // Cron Mingguan: Cek Kondisi Oli (Tiap Hari Minggu Jam 10:00 WIB)
 cron.schedule('0 10 * * 0', async () => {
